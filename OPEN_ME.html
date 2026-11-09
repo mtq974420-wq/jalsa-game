@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>تفعيل GitHub Pages - جلسة</title>
+<style>
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  margin: 0;
+  padding: 20px;
+  direction: rtl;
+}
+.card {
+  background: rgba(255,255,255,0.1);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  padding: 40px;
+  max-width: 600px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+}
+h1 { font-size: 2.5em; margin: 0 0 20px 0; }
+.emoji { font-size: 3em; }
+.step { 
+  background: rgba(255,255,255,0.15); 
+  padding: 15px; 
+  margin: 10px 0; 
+  border-radius: 10px;
+  border-right: 4px solid #fff;
+}
+.btn {
+  display: inline-block;
+  background: #fff;
+  color: #667eea;
+  padding: 15px 30px;
+  border-radius: 10px;
+  text-decoration: none;
+  font-weight: bold;
+  margin: 10px 5px;
+  transition: transform 0.2s;
+}
+.btn:hover { transform: scale(1.05); }
+code {
+  background: rgba(0,0,0,0.3);
+  padding: 3px 8px;
+  border-radius: 5px;
+  font-family: monospace;
+}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="emoji">🎮</div>
+  <h1>لعبة جلسة</h1>
+  
+  <p><strong>GitHub Pages غير مفعل!</strong></p>
+  
+  <div class="step">
+    <strong>1️⃣</strong> اذهب إلى إعدادات GitHub Pages
+  </div>
+  
+  <div class="step">
+    <strong>2️⃣</strong> اختر: Source = <code>Deploy from a branch</code>
+  </div>
+  
+  <div class="step">
+    <strong>3️⃣</strong> اختر: Branch = <code>main</code> + <code>/ (root)</code>
+  </div>
+  
+  <div class="step">
+    <strong>4️⃣</strong> اضغط <code>Save</code> وانتظر دقيقة
+  </div>
+  
+  <a href="https://github.com/mtq974410-svg/jalsah-2/settings/pages" class="btn" target="_blank">
+    ⚙️ اذهب للإعدادات
+  </a>
+  
+  <a href="https://mtq974410-svg.github.io/jalsah-2/" class="btn" target="_blank">
+    🎮 افتح اللعبة (بعد التفعيل)
+  </a>
+  
+  <hr style="margin: 30px 0; border: 0; border-top: 1px solid rgba(255,255,255,0.3)">
+  
+  <h3>🛠️ بديل: تشغيل محلي</h3>
+  <p>إذا تبي تجرب اللعبة الحين بدون انتظار:</p>
+  <pre style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 10px; text-align: left; direction: ltr; overflow-x: auto;">
+git clone https://github.com/mtq974410-svg/jalsah-2.git
+cd jalsah-2
+python3 -m http.server 8000
+# ثم افتح: http://localhost:8000
+  </pre>
+  
+  <p style="margin-top: 30px; opacity: 0.7; font-size: 0.9em;">
+    💡 ملاحظة: المكالمات الصوتية تحتاج HTTPS (تشتغل على GitHub Pages فقط)
+  </p>
+</div>
+</body>
+</html>

@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>اختبار الصوت</title>
+<style>
+  body { font-family: Arial, sans-serif; padding: 20px; background: #0b0820; color: white; }
+  button { padding: 15px 30px; font-size: 18px; margin: 10px; border-radius: 12px; border: none; cursor: pointer; width: 100%; }
+  .green  { background: #22c55e; color: white; }
+  .blue   { background: #3b82f6; color: white; }
+  .red    { background: #ef4444; color: white; }
+  .gray   { background: #374151; color: white; }
+  #log { background: #1f2937; border-radius: 12px; padding: 15px; margin-top: 20px; min-height: 200px; font-size: 13px; line-height: 1.8; direction: ltr; word-break: break-all; }
+  .ok   { color: #22c55e; }
+  .err  { color: #ef4444; }
+  .info { color: #60a5fa; }
+  .warn { color: #fbbf24; }
+  h2 { text-align: center; }
+</style>
+</head>
+<body>
+<h2>🔧 تشخيص صوت جلسة</h2>
+
+<button class="blue" onclick="runTests()">▶️ شغّل الاختبارات</button>
+<button class="green" onclick="testMic()">🎙️ اختبر المايك</button>
+<button class="blue" onclick="testRelay()">🌐 اختبر TURN للشبكات المقيّدة</button>
+<button class="blue" onclick="loopbackTest()">🔁 اختبر الاتصال الصوتي (WebRTC محلي)</button>
+<button class="green" onclick="testSpeaker()">🔊 اختبر السماعة</button>
+<button class="gray" onclick="clearLog()">🗑️ مسح</button>
+
+<div id="log">اضغط "شغّل الاختبارات" للبدء...</div>
+
+<script>
+const log = document.getElementById("log");
+let captureTestRunning = false;
+const turnURL = () => (window.JALSAH_VOICE_CONFIG || {}).turnEndpoint ||
+  "https://aljalsa.metered.live/api/v1/turn/credentials?apiKey=1797aa7c66e844529ee95d27d4f7d4220b60";
+async function fetchTurn() {
+  const ctrl = new AbortController(), timeout = setTimeout(() => ctrl.abort(), 8000);
+  try {
+    const response = await fetch(turnURL(), {cache: "no-store", credentials: "same-origin", signal: ctrl.signal});
+    if (!response.ok) throw new Error("HTTP " + response.status);
+    const servers = await response.json();
+    if (!Array.isArray(servers) || !servers.some(s => s && s.username && s.credential &&
+        (Array.isArray(s.urls) ? s.urls : [s.urls]).some(u => /^turns?:/i.test(u))))
+      throw new Error("لا توجد بيانات TURN صالحة");
+    return servers;
+  } finally { clearTimeout(timeout); }
+}
+
+// A credential API success is NOT proof that the relay can be reached.
+async function testRelay() {
+  let pc;
+  addLog("=== اختبار وصول TURN (relay-only) ===");
+  try {
+    const servers = await fetchTurn();
+    const PC = window.RTCPeerConnection || window.webkitRTCPeerConnection;
+    pc = new PC({iceServers: servers, iceTransportPolicy: "relay"});
+    const gathered = new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error("لم يصل relay candidate خلال 12 ثانية")), 12000);
+      pc.onicecandidate = e => {
+        if (e.candidate && / typ relay(?: |$)/.test(e.candidate.candidate)) {clearTimeout(timer);resolve(true);}
+        else if (!e.candidate) {clearTimeout(timer);resolve(false);}
+      };
+      pc.__stopTimer = () => clearTimeout(timer);
+    });
+    pc.createDataChannel("relay-diagnostic");
+    await pc.setLocalDescription(await pc.createOffer());
+    const relay = await gathered;
+    addLog(relay ? "✅ تم حجز relay عبر TURN. يبقى اختبار جهازين على شبكتين مختلفتين للتأكد من مرور الصوت."
+      : "❌ لم يتم حجز relay. راجع صلاحية بيانات TURN وحصة الخدمة والشبكة.", relay ? "ok" : "err");
+  } catch(e) { addLog("❌ TURN: " + e.message, "err"); }
+  finally { if (pc) {if (pc.__stopTimer) pc.__stopTimer();pc.close();} }
+}
+
+function addLog(msg, type = "info") {
+  const d = document.createElement("div");
+  d.className = type;
+  d.textContent = new Date().toLocaleTimeString() + " | " + msg;
+  log.appendChild(d);
+  log.scrollTop = log.scrollHeight;
+}
+
+function clearLog() { log.innerHTML = ""; }
+
+async function runTests() {
+  clearLog();
+  addLog("=== بدء الاختبارات ===", "info");
+
+  // 1. HTTPS
+  addLog("1. HTTPS: " + (window.isSecureContext ? "✅ آمن" : "❌ غير آمن - يجب HTTPS"), window.isSecureContext ? "ok" : "err");
+
+  // 2. getUserMedia
+  const hasGUM = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+  addLog("2. getUserMedia: " + (hasGUM ? "✅ متاح" : "❌ غير متاح"), hasGUM ? "ok" : "err");
+
+  // 3. RTCPeerConnection
+  const hasRTC = !!(window.RTCPeerConnection || window.webkitRTCPeerConnection);
+  addLog("3. RTCPeerConnection: " + (hasRTC ? "✅ متاح" : "❌ غير متاح"), hasRTC ? "ok" : "err");
+
+  // 4. AudioContext
+  const hasAC = !!(window.AudioContext || window.webkitAudioContext);
+  addLog("4. AudioContext: " + (hasAC ? "✅ متاح" : "❌ غير متاح"), hasAC ? "ok" : "err");
+
+  // 5. WebCrypto
+  const hasCrypto = !!(window.crypto && window.crypto.subtle);
+  addLog("5. WebCrypto: " + (hasCrypto ? "✅ متاح" : "❌ غير متاح"), hasCrypto ? "ok" : "err");
+
+  // 6. اختبار STUN
+  addLog("6. جاري اختبار STUN...", "info");
+  try {
+    await testSTUN();
+  } catch(e) {
+    addLog("   STUN خطأ: " + e.message, "err");
+  }
+
+  // 7. اختبار TURN API
+  addLog("7. جاري اختبار TURN API...", "info");
+  try {
+    const data = await fetchTurn();
+    addLog("   TURN API: ✅ " + data.length + " servers (بيانات فقط؛ اضغط اختبار TURN للتحقق من relay)", "ok");
+  } catch(e) {
+    addLog("   TURN API: ❌ " + e.message, "err");
+  }
+
+  // 8. معلومات الجهاز
+  const ua = navigator.userAgent;
+  const inApp = /FBAN|FBAV|FB_IAB|Instagram|Snapchat|Line\/|MicroMessenger|TikTok|musical_ly|BytedanceWebview|Twitter|Telegram|WhatsApp|; wv\)/i.test(ua);
+  addLog("   متصفح تطبيق (انستغرام/سناب...): " + (inApp ? "⚠️ نعم - افتح الرابط في Safari أو Chrome" : "✅ لا"), inApp ? "warn" : "ok");
+  addLog("   Wake Lock (منع انطفاء الشاشة): " + ("wakeLock" in navigator ? "✅ متاح" : "⚠️ غير متاح (اقفل قفل الشاشة التلقائي يدوياً)"), "wakeLock" in navigator ? "ok" : "warn");
+  try {
+    if (navigator.permissions) {
+      const st = await navigator.permissions.query({ name: "microphone" });
+      addLog("   إذن المايك: " + st.state + (st.state === "denied" ? " ❌ ممنوع من إعدادات المتصفح" : ""), st.state === "denied" ? "err" : "info");
+    }
+  } catch (e) {}
+  addLog("8. المتصفح: " + navigator.userAgent.substring(0, 80), "info");
+  addLog("   الصفحة: " + location.href, "info");
+
+  addLog("=== انتهت الاختبارات ===", "info");
+}
+
+async function testSTUN() {
+  const PC = window.RTCPeerConnection || window.webkitRTCPeerConnection;
+  if (!PC) throw new Error("RTCPeerConnection غير متاح");
+  const pc = new PC({iceServers: [{urls: "stun:stun.l.google.com:19302"}]});
+  let timer;
+  try {
+    const result = new Promise(resolve => {
+      timer = setTimeout(() => resolve(false), 5000);
+      pc.onicecandidate = e => {
+        if (e.candidate && / typ srflx(?: |$)/.test(e.candidate.candidate)) resolve(true);
+        else if (!e.candidate) resolve(false);
+      };
+    });
+    pc.createDataChannel("test");
+    await pc.setLocalDescription(await pc.createOffer());
+    const found = await result;
+    addLog(found ? "   STUN: ✅ وصل server-reflexive candidate" : "   STUN: ⚠️ لم يصل عنوان خارجي (شبكة مقيّدة؟)", found ? "ok" : "warn");
+  } finally { clearTimeout(timer);pc.close(); }
+}
+
+async function measureLevel(stream, ms) {
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return null;
+  const ctx = new AC();
+  try { await ctx.resume(); } catch (e) {}
+  const src = ctx.createMediaStreamSource(stream), an = ctx.createAnalyser();
+  an.fftSize = 512; src.connect(an);
+  const silent = ctx.createGain(); silent.gain.value = 0; an.connect(silent); silent.connect(ctx.destination);
+  const buf = new Uint8Array(an.fftSize); let peak = 0; const t0 = performance.now();
+  await new Promise(done => {
+    const tick = () => {
+      an.getByteTimeDomainData(buf);
+      let sum = 0; for (let i = 0; i < buf.length; i++) { const v = (buf[i] - 128) / 128; sum += v * v; }
+      peak = Math.max(peak, Math.sqrt(sum / buf.length));
+      if (performance.now() - t0 >= ms) done(); else setTimeout(tick, 50);
+    };
+    tick();
+  });
+  try { src.disconnect(); an.disconnect(); silent.disconnect(); await ctx.close(); } catch (e) {}
+  return peak;
+}
+
+async function getStream() {
+  // نفس تسلسل المحاولات المستخدم في اللعبة
+  const tries = [
+    { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: { ideal: 1 } },
+    { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+    true
+  ];
+  let last;
+  for (const audio of tries) {
+    try { return await navigator.mediaDevices.getUserMedia({ audio, video: false }); }
+    catch (e) {
+      last = e;
+      if (["NotAllowedError", "PermissionDeniedError", "SecurityError", "NotFoundError"].includes(e.name)) throw e;
+    }
+  }
+  throw last;
+}
+
+async function listDevices() {
+  try {
+    const devs = await navigator.mediaDevices.enumerateDevices();
+    const ins = devs.filter(d => d.kind === "audioinput"), outs = devs.filter(d => d.kind === "audiooutput");
+    addLog("🎙️ مايكات: " + ins.length + " | 🔊 مخارج: " + outs.length + (outs.length === 0 ? " (المتصفح يخفي المخارج، طبيعي بسفاري/iOS)" : ""), "info");
+    ins.forEach(d => addLog("   - " + (d.label || "(بدون اسم)"), "info"));
+  } catch (e) { addLog("تعذّر عرض الأجهزة: " + e.message, "warn"); }
+}
+
+async function testSpeaker() {
+  addLog("=== اختبار السماعة ===", "info");
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    const ctx = new AC(); await ctx.resume();
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.frequency.value = 660; g.gain.value = 0.15; o.connect(g); g.connect(ctx.destination);
+    o.start(); addLog("🔊 لازم تسمع نغمة لمدة ثانية...", "warn");
+    setTimeout(() => { o.stop(); ctx.close(); addLog("لو ما سمعت: ارفع الصوت، وتأكد أن الجوال مو بوضع الصامت (iPhone: الزر الجانبي).", "info"); }, 1000);
+  } catch (e) { addLog("❌ " + e.message, "err"); }
+}
+
+// اتصالان WebRTC داخل نفس الصفحة: يثبت أن المايك + الترميز + التشغيل يشتغلون بهالمتصفح
+async function loopbackTest() {
+  if (captureTestRunning) { addLog("انتظر اكتمال اختبار المايك الحالي", "warn"); return; }
+  captureTestRunning = true;
+  addLog("=== اختبار اتصال WebRTC محلي (لا يختبر الشبكة الخارجية) ===");
+  let stream, a, b, el, timer;
+  const earlyA = [], earlyB = [];
+  const add = (pc, list, candidate) => {
+    if (!candidate) return;
+    if (pc.remoteDescription) pc.addIceCandidate(candidate).catch(e => addLog("ICE: " + e.message, "warn"));
+    else list.push(candidate);
+  };
+  try {
+    stream = await getStream(); await listDevices();
+    const PC = window.RTCPeerConnection || window.webkitRTCPeerConnection;
+    a = new PC({iceServers: []}); b = new PC({iceServers: []});
+    a.onicecandidate = e => add(b, earlyB, e.candidate);
+    b.onicecandidate = e => add(a, earlyA, e.candidate);
+    let remote;
+    b.ontrack = e => { remote = (e.streams && e.streams[0]) || new MediaStream([e.track]); };
+    stream.getTracks().forEach(t => a.addTrack(t, stream));
+    await a.setLocalDescription(await a.createOffer()); await b.setRemoteDescription(a.localDescription);
+    for (const candidate of earlyB.splice(0)) await b.addIceCandidate(candidate);
+    await b.setLocalDescription(await b.createAnswer()); await a.setRemoteDescription(b.localDescription);
+    for (const candidate of earlyA.splice(0)) await a.addIceCandidate(candidate);
+    await new Promise((resolve,reject) => {
+      const check = () => {
+        if (a.connectionState === "failed" || b.connectionState === "failed") return reject(new Error("فشل ICE"));
+        if (remote && [a,b].every(pc => pc.connectionState === "connected" || ["connected","completed"].includes(pc.iceConnectionState))) resolve();
+      };
+      timer = setTimeout(() => reject(new Error("لم يكتمل الاتصال خلال 10 ثواني")),10000);
+      a.onconnectionstatechange = b.onconnectionstatechange = a.oniceconnectionstatechange = b.oniceconnectionstatechange = check;
+      check();
+    });
+    clearTimeout(timer);
+    el = document.createElement("audio"); el.muted = true; el.srcObject = remote;
+    el.setAttribute("playsinline", ""); document.body.appendChild(el);
+    try { await el.play(); } catch(e) {}
+    addLog("🎤 اتصل ICE فعلياً. تكلّم الحين 4 ثواني...", "warn");
+    const peak = await measureLevel(remote,4000), reports = await b.getStats();
+    const inbound = [...reports.values()].find(s => s.type === "inbound-rtp" && (s.kind === "audio" || s.mediaType === "audio"));
+    if (!inbound || !inbound.bytesReceived) throw new Error("لم تصل حزم صوت RTP");
+    addLog("✅ وصل صوت RTP: " + inbound.bytesReceived + " bytes", "ok");
+    if (peak !== null) addLog(peak > 0.02 ? "✅ المايك والترميز والاستقبال يعملون محلياً" : "⚠️ المسار متصل لكن المستوى منخفض. تأكد أن المايك مو مكتوم.", peak > 0.02 ? "ok" : "warn");
+  } catch(e) { addLog("❌ " + e.name + ": " + e.message, "err"); }
+  finally {
+    clearTimeout(timer);
+    if (el) { el.pause(); el.srcObject = null; el.remove(); }
+    if (a) a.close(); if (b) b.close();
+    if (stream) stream.getTracks().forEach(t => t.stop());
+    captureTestRunning = false;
+  }
+}
+
+async function testMic() {
+  if (captureTestRunning) { addLog("انتظر اكتمال الاختبار الحالي", "warn"); return; }
+  captureTestRunning = true;
+  let stream;
+  addLog("=== اختبار المايك ===", "info");
+  try {
+    addLog("جاري طلب إذن المايك...", "info");
+    stream = await getStream();
+    await listDevices();
+    const tracks = stream.getAudioTracks();
+    addLog("✅ المايك يعمل! Tracks: " + tracks.length, "ok");
+    tracks.forEach(t => {
+      addLog("  Track: " + t.label + " | enabled: " + t.enabled + " | state: " + t.readyState, "info");
+    });
+
+    // مستوى الصوت الفعلي: يكشف مايك شغّال بس مكتوم من النظام أو بعيد
+    addLog("🎤 تكلّم الحين لمدة 4 ثواني...", "warn");
+    const peak = await measureLevel(stream, 4000);
+    if (peak === null) addLog("AudioContext غير متاح، تخطينا فحص المستوى", "warn");
+    else if (peak > 0.02) addLog("✅ المايك يلتقط صوتك (أعلى مستوى: " + Math.round(peak * 100) + "%)", "ok");
+    else addLog("⚠️ المايك شغّال بس ما التقط صوت (" + Math.round(peak * 100) + "%). تأكد إنه مو مكتوم من إعدادات الجهاز، وقرّب منه.", "warn");
+
+    // أوقف الـ stream
+    stream.getTracks().forEach(t => t.stop());
+    addLog("✅ اختبار المايك اكتمل بنجاح!", "ok");
+  } catch(e) {
+    addLog("❌ خطأ: " + e.name + " - " + e.message, "err");
+    const errors = {
+      NotAllowedError: "المتصفح منع المايك → اضغط على القفل 🔒 ← الميكروفون ← سماح (وتأكد من إذن المتصفح بإعدادات الجهاز)",
+      NotFoundError: "ما في مايك على الجهاز",
+      NotReadableError: "المايك مشغول بتطبيق ثاني",
+      SecurityError: "يحتاج HTTPS",
+    };
+    if (errors[e.name]) addLog("💡 الحل: " + errors[e.name], "warn");
+  } finally {
+    if (stream) stream.getTracks().forEach(t => t.stop());
+    captureTestRunning = false;
+  }
+}
+</script>
+</body>
+</html>

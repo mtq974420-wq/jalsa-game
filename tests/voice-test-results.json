@@ -1,0 +1,10 @@
+{
+  "browser": "Chromium (Playwright)",
+  "signalling": "local test relay; real WebCrypto/WebRTC; fake microphone",
+  "productionServicesTested": false,
+  "currentReviewRun": {
+    "status": "BLOCKED_BEFORE_TESTS",
+    "reason": "The execution environment blocked Chromium navigation to the local test server with ERR_BLOCKED_BY_ADMINISTRATOR. No browser assertions were executed in this review run."
+  },
+  "results": []
+}

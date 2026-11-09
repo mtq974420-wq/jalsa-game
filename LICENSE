@@ -1,0 +1,35 @@
+Copyright (c) 2026 mtq974410-svg. All rights reserved.
+
+"مين برا السالفة؟" (Mn Bara Alsalfa) — جميع الحقوق محفوظة.
+
+This software, including its source code, design, graphics, characters,
+sounds, word lists and all related files in this repository (the "Software"),
+is the exclusive property of the copyright holder.
+
+You may play the game at its official address for personal, non-commercial use.
+
+Without prior written permission from the copyright holder, you may NOT:
+  - copy, reproduce, or redistribute the Software, in whole or in part;
+  - modify, adapt, translate, or create derivative works based on it;
+  - publish, host, or deploy the Software or any copy of it on any website,
+    app store, or service;
+  - sell, rent, sublicense, or use the Software for any commercial purpose;
+  - remove or alter this notice.
+
+Viewing the source code on GitHub does not grant any of the rights above.
+
+بالعربي:
+مسموح لك تلعب اللعبة من رابطها الرسمي للاستخدام الشخصي غير التجاري.
+ممنوع بدون إذن مكتوب من صاحب الحقوق: نسخ اللعبة أو أي جزء منها، أو تعديلها،
+أو نشرها أو رفعها على أي موقع أو تطبيق، أو بيعها أو استخدامها تجارياً.
+وجود الكود على GitHub ما يعطي أي أحد حق استخدامه.
+
+Third-party components (not covered by this notice):
+  - js/vendor/supabase-2.119.0.js — Copyright (c) 2020 Supabase, MIT License
+    (see js/vendor/SUPABASE-LICENSE.txt).
+  - Movie, TV and cartoon posters are loaded from TMDB and belong to their
+    respective owners. This product uses the TMDB API but is not endorsed or
+    certified by TMDB.
+  - Fonts (Cairo, Lalezar) are loaded from Google Fonts under the SIL Open Font License.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.
